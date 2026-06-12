@@ -1,0 +1,17 @@
+# Zephyr / nRF Connect SDK build output
+build/
+
+# SSL certificates (generated locally by start_phone_server.py)
+cert.pem
+key.pem
+
+# VS Code workspace settings (machine-specific)
+.vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# WAV test files
+*.wav

@@ -1,0 +1,32 @@
+/*
+ * MAX98357A I2S 핀 배정
+ *   BCLK  → P1.13 (Arduino D11)
+ *   LRCLK → P1.14 (Arduino D12)
+ *   DIN   → P1.15 (Arduino D13)
+ *   VIN   → 3.3V  |  GND → GND  |  SD → 3.3V (pull-up)
+ */
+
+&pinctrl {
+    i2s0_default: i2s0_default {
+        group1 {
+            psels = <NRF_PSEL(I2S_SCK_M,  1, 13)>,
+                    <NRF_PSEL(I2S_LRCK_M, 1, 14)>,
+                    <NRF_PSEL(I2S_SDOUT,  1, 15)>;
+        };
+    };
+    i2s0_sleep: i2s0_sleep {
+        group1 {
+            psels = <NRF_PSEL(I2S_SCK_M,  1, 13)>,
+                    <NRF_PSEL(I2S_LRCK_M, 1, 14)>,
+                    <NRF_PSEL(I2S_SDOUT,  1, 15)>;
+            low-power-enable;
+        };
+    };
+};
+
+&i2s0 {
+    status = "okay";
+    pinctrl-0 = <&i2s0_default>;
+    pinctrl-1 = <&i2s0_sleep>;
+    pinctrl-names = "default", "sleep";
+};

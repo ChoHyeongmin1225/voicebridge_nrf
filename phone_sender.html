@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>VoiceBridge 테스트</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #1a1a2e;
+    border-radius: 16px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 420px;
+    border: 1px solid #2a2a4a;
+  }
+  h1 { font-size: 22px; color: #7c9eff; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #666; margin-bottom: 28px; }
+
+  .section-label {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  /* 파일 선택 박스 */
+  .file-box {
+    border: 2px dashed #2a2a5a;
+    border-radius: 12px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .file-box:active { background: #1e1e3a; }
+  .file-box.has-file { border-color: #7c9eff; border-style: solid; }
+  .file-box input { display: none; }
+  .file-icon { font-size: 36px; margin-bottom: 8px; }
+  .file-hint { font-size: 14px; color: #555; }
+  .file-name { font-size: 13px; color: #7c9eff; margin-top: 8px;
+               word-break: break-all; line-height: 1.4; }
+  .file-size { font-size: 12px; color: #666; margin-top: 4px; }
+
+  /* 버튼 */
+  #btn-send {
+    width: 100%;
+    padding: 18px;
+    border: none;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(135deg, #7c9eff, #a78bfa);
+    color: white;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-bottom: 16px;
+    letter-spacing: 0.02em;
+  }
+  #btn-send:disabled {
+    background: #1e1e3a;
+    color: #444;
+    cursor: not-allowed;
+  }
+  #btn-send:not(:disabled):active { opacity: 0.85; transform: scale(0.98); }
+
+  /* 진행 바 */
+  .progress-wrap {
+    background: #0f0f1a;
+    border-radius: 8px;
+    height: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    display: none;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7c9eff, #a78bfa);
+    width: 0%;
+    transition: width 0.15s linear;
+    border-radius: 8px;
+  }
+  .progress-text {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 14px;
+    min-height: 16px;
+  }
+
+  /* 상태 메시지 */
+  .status {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    display: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .status.info    { background:#1a1a3a; color:#7c9eff; border:1px solid #2a2a5a; display:block; }
+  .status.success { background:#0d2b1a; color:#4ade80; border:1px solid #166534; display:block; }
+  .status.error   { background:#2b0d0d; color:#f87171; border:1px solid #7f1d1d; display:block; }
+  .status.warn    { background:#2b200d; color:#fbbf24; border:1px solid #78350f; display:block; }
+
+  /* LED 시뮬레이션 */
+  .led-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 20px;
+    margin-bottom: 4px;
+  }
+  .led {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #1a1a2e;
+    border: 2px solid #2a2a4a;
+    transition: all 0.2s;
+  }
+  .led.on { background: #fbbf24; box-shadow: 0 0 10px #fbbf24aa; border-color: #f59e0b; }
+  .led-label { font-size: 11px; color: #444; text-align: center; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>VoiceBridge</h1>
+  <p class="sub">nRF52840 BLE 수신 테스트</p>
+
+  <div class="section-label">오디오 파일 선택 (WAV · M4A · MP3 등)</div>
+  <div class="file-box" id="file-box" onclick="document.getElementById('wav-input').click()">
+    <input type="file" id="wav-input" accept="audio/*">
+    <div class="file-icon">🎵</div>
+    <div class="file-hint">탭하여 파일 선택</div>
+    <div class="file-name" id="file-name-text"></div>
+    <div class="file-size" id="file-size-text"></div>
+  </div>
+
+  <button id="btn-send" disabled onclick="onSendClick()">
+    🔵  VoiceBridge 연결 &amp; 전송
+  </button>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <div class="progress-text" id="progress-text"></div>
+
+  <div class="status" id="status-box"></div>
+
+  <div class="led-row">
+    <div class="led" id="led0"></div>
+    <div class="led" id="led1"></div>
+    <div class="led" id="led2"></div>
+    <div class="led" id="led3"></div>
+  </div>
+  <div class="led-label">보드 LED 상태 (시뮬레이션)</div>
+</div>
+
+<script>
+/* ── BLE 상수 (firmware와 동일) ───────────────── */
+const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const DEVICE_NAME = 'VoiceBridge';
+const PKT_SIZE    = 20;
+const DATA_SIZE   = 18;   /* PKT_SIZE - 2바이트 헤더 */
+const DELAY_MS    = 50;   /* 패킷 간 지연: Android TX 큐 포화 방지 (≥ connection interval) */
+
+let wavFile     = null;
+let chaseTimer  = null;
+let chasePos    = 0;
+
+/* ── LED 유틸 ─────────────────────────────────── */
+const ledEl = i => document.getElementById(`led${i}`);
+const ledsAll = on => { for(let i=0;i<4;i++) ledEl(i).className='led'+(on?' on':''); };
+const ledOnly = i  => { ledsAll(false); ledEl(i).className='led on'; };
+function startChase() {
+  chasePos = 0;
+  chaseTimer = setInterval(() => { ledOnly(chasePos++ % 4); }, 250);
+}
+function stopChase() { clearInterval(chaseTimer); chaseTimer = null; }
+
+/* ── 상태 표시 ────────────────────────────────── */
+function setStatus(msg, type='info') {
+  const el = document.getElementById('status-box');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+/* ── WAV 변환 유틸 ────────────────────────────── */
+function writeStr(view, offset, str) {
+  for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+}
+
+function encodeWav(int16Samples, sampleRate) {
+  const dataBytes = int16Samples.length * 2;
+  const buf  = new ArrayBuffer(44 + dataBytes);
+  const view = new DataView(buf);
+  writeStr(view,  0, 'RIFF');
+  view.setUint32( 4, 36 + dataBytes, true);
+  writeStr(view,  8, 'WAVE');
+  writeStr(view, 12, 'fmt ');
+  view.setUint32(16, 16,         true);  // PCM chunk size
+  view.setUint16(20,  1,         true);  // PCM format
+  view.setUint16(22,  1,         true);  // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // byte rate
+  view.setUint16(32,  2,         true);  // block align
+  view.setUint16(34, 16,         true);  // bits per sample
+  writeStr(view, 36, 'data');
+  view.setUint32(40, dataBytes,  true);
+  new Int16Array(buf, 44).set(int16Samples);
+  return new Uint8Array(buf);
+}
+
+async function toWav8k(arrayBuffer) {
+  /* 1. 브라우저가 M4A/MP3/WAV 등 모든 포맷을 float32 PCM으로 디코딩 */
+  const tmpCtx  = new (window.AudioContext || window.webkitAudioContext)();
+  const decoded = await tmpCtx.decodeAudioData(arrayBuffer.slice(0));
+  await tmpCtx.close();
+
+  /* 2. OfflineAudioContext로 8kHz mono 리샘플링 */
+  const TARGET_SR  = 8000;
+  const numFrames  = Math.ceil(decoded.duration * TARGET_SR);
+  const offCtx     = new OfflineAudioContext(1, numFrames, TARGET_SR);
+  const src        = offCtx.createBufferSource();
+  src.buffer       = decoded;
+  /* stereo → mono: ChannelMerger 없이 destination이 1ch이면 자동 믹스다운 */
+  src.connect(offCtx.destination);
+  src.start(0);
+  const rendered = await offCtx.startRendering();
+
+  /* 3. float32 → int16 클리핑 변환 */
+  const f32    = rendered.getChannelData(0);
+  const int16  = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) {
+    const s   = Math.max(-1, Math.min(1, f32[i]));
+    int16[i]  = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+
+  return encodeWav(int16, TARGET_SR);
+}
+
+/* ── 파일 선택 이벤트 ─────────────────────────── */
+document.getElementById('wav-input').addEventListener('change', e => {
+  wavFile = e.target.files[0];
+  if (!wavFile) return;
+  const kb  = (wavFile.size / 1024).toFixed(1);
+  const ext = wavFile.name.split('.').pop().toUpperCase();
+  document.getElementById('file-name-text').textContent = wavFile.name;
+  document.getElementById('file-size-text').textContent =
+    `${kb} KB · ${ext}  →  전송 시 8kHz 16bit mono WAV로 자동 변환`;
+  document.getElementById('file-box').classList.add('has-file');
+  document.getElementById('btn-send').disabled = false;
+  setStatus(`파일 선택됨: ${wavFile.name}`, 'info');
+});
+
+/* ── 패킷 생성 (ble_sender.py와 동일 프로토콜) ── */
+function makePackets(arrayBuffer) {
+  const data  = new Uint8Array(arrayBuffer);
+  const total = data.length;
+  const pkts  = [];
+
+  /* START: [0xAA][0xBB][size 4B little-endian][...0] */
+  const s = new Uint8Array(PKT_SIZE);
+  s[0]=0xAA; s[1]=0xBB;
+  s[2]=total&0xFF; s[3]=(total>>8)&0xFF;
+  s[4]=(total>>16)&0xFF; s[5]=(total>>24)&0xFF;
+  pkts.push(s);
+
+  /* DATA: [seq_lo][seq_hi][data 18B] */
+  let seq = 0;
+  for (let off = 0; off < total; off += DATA_SIZE) {
+    const p = new Uint8Array(PKT_SIZE);
+    p[0] = seq & 0xFF;
+    p[1] = (seq >> 8) & 0xFF;
+    p.set(data.slice(off, Math.min(off + DATA_SIZE, total)), 2);
+    pkts.push(p);
+    seq++;
+  }
+
+  /* END: [0xFF][0xFE][...0] */
+  const e = new Uint8Array(PKT_SIZE);
+  e[0]=0xFF; e[1]=0xFE;
+  pkts.push(e);
+
+  return pkts;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ── 메인: 연결 & 전송 ────────────────────────── */
+async function onSendClick() {
+  if (!wavFile) return;
+
+  /* Web Bluetooth 지원 확인 */
+  if (!navigator.bluetooth) {
+    setStatus(
+      '이 브라우저는 Web Bluetooth를 지원하지 않습니다.\n\n'
+      + '✅ 안드로이드 Chrome에서 열어주세요.\n'
+      + '❌ iOS Safari / Firefox는 미지원',
+      'error'
+    );
+    return;
+  }
+
+  const btn = document.getElementById('btn-send');
+  btn.disabled = true;
+  ledsAll(false);
+
+  try {
+    /* 1. 파일 읽기 → 필요 시 WAV 변환 */
+    setStatus('파일 읽는 중...', 'info');
+    const rawBuffer = await wavFile.arrayBuffer();
+
+    let sendBytes;
+    const ext = wavFile.name.split('.').pop().toLowerCase();
+    if (ext === 'wav') {
+      /* WAV는 그대로 사용 */
+      sendBytes = new Uint8Array(rawBuffer);
+    } else {
+      /* M4A / MP3 / 기타 → 8kHz 16bit mono WAV로 변환 */
+      setStatus(`${ext.toUpperCase()} 감지 → 8kHz 16bit mono WAV로 변환 중...`, 'info');
+      try {
+        sendBytes = await toWav8k(rawBuffer);
+      } catch (convErr) {
+        setStatus(`변환 실패: ${convErr.message}\nWAV 파일을 직접 선택해주세요.`, 'error');
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    /* 100KB 초과 경고 */
+    if (sendBytes.length > 100 * 1024) {
+      setStatus(
+        `파일이 너무 큽니다: ${(sendBytes.length/1024).toFixed(1)} KB\n` +
+        `보드 버퍼 최대 100 KB — 더 짧은 오디오를 사용하세요.`,
+        'error'
+      );
+      btn.disabled = false;
+      return;
+    }
+
+    const pkts  = makePackets(sendBytes.buffer);
+    const total = pkts.length;
+    const wavKb = (sendBytes.length / 1024).toFixed(1);
+    setStatus(`변환 완료: ${wavKb} KB WAV → 패킷 ${total}개 준비 완료`, 'info');
+
+    /* 2. BLE 장치 검색 팝업 (사용자가 직접 선택) */
+    setStatus('주변 BLE 장치 검색 중...\n팝업에서 VoiceBridge를 선택하세요.', 'info');
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: DEVICE_NAME }],
+      optionalServices: [NUS_SERVICE]
+    });
+
+    /* 3. GATT 연결 */
+    setStatus('연결 중...', 'info');
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(NUS_SERVICE);
+    const rxChar  = await service.getCharacteristic(NUS_RX_UUID);
+
+    ledOnly(0); /* LED1 ON: 연결됨 */
+    setStatus('✓ 연결 성공! 전송 시작...', 'info');
+
+    /* 4. 패킷 전송 */
+    const progressWrap = document.getElementById('progress-wrap');
+    const progressBar  = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    progressWrap.style.display = 'block';
+    startChase();
+
+    /* writeValue (with response) 지원 여부 확인 → flow control 가능하면 우선 사용 */
+    const useAck = rxChar.properties.write;
+
+    for (let i = 0; i < total; i++) {
+      if (useAck) {
+        /* GATT Write Request: ACK 받은 뒤 다음 패킷 → 자동 flow control */
+        await rxChar.writeValue(pkts[i]);
+      } else {
+        /* Write Without Response: 수동 딜레이로 큐 포화 방지 */
+        await rxChar.writeValueWithoutResponse(pkts[i]);
+        await sleep(DELAY_MS);
+      }
+
+      const pct = Math.round((i + 1) / total * 100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = `${i + 1} / ${total} 패킷  (${pct}%)`;
+    }
+
+    /* 5. 완료 */
+    stopChase();
+    ledsAll(true);  /* 수신 완료: 전체 ON */
+    setStatus(
+      '✅ 전송 완료!\n\n'
+      + `전송 크기: ${(sendBytes.length/1024).toFixed(1)} KB (8kHz 16bit mono WAV)\n`
+      + '보드: LED 전체 ON → 재생 후 전체 OFF\n'
+      + '스피커 연결 시 음성이 출력됩니다.',
+      'success'
+    );
+    setTimeout(() => ledsAll(false), 3000);
+
+  } catch (err) {
+    stopChase();
+    ledsAll(false);
+    if (err.name === 'NotFoundError' || err.name === 'NotAllowedError') {
+      setStatus('장치 선택이 취소되었거나 찾지 못했습니다.\n보드 전원을 확인하고 다시 시도하세요.', 'warn');
+    } else if (err.name === 'NetworkError') {
+      setStatus('BLE 연결이 끊어졌습니다.\n보드와의 거리를 줄이고 다시 시도하세요.', 'error');
+    } else {
+      setStatus(`오류 발생: ${err.name}\n${err.message}`, 'error');
+    }
+  }
+
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
