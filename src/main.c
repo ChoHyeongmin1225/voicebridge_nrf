@@ -327,6 +327,10 @@ static void playback_thread(void *a, void *b, void *c)
 		/* PCM 데이터 포인터 및 프레임 수 계산 */
 		const uint8_t *pcm_raw       = g_wav + data_off;
 		uint32_t       bytes_per_frm = (uint32_t)ch * (bps / 8);
+		if (bytes_per_frm == 0) {
+			printk("[PLAY] WAV 파라미터 오류 (ch=%u bps=%u)\n", ch, bps);
+			goto play_done;
+		}
 		uint32_t       n_frames      = pcm_bytes / bytes_per_frm;
 
 		/* stereo 출력 블록당 L/R pair 수 */

@@ -121,15 +121,16 @@ async def scan_and_send(wav_path: str):
         print(f"추정 재생 : ~{duration_s:.1f}초 (8kHz mono 기준)")
         print(f"패킷 크기 : {negotiated-3}B / 패킷 (데이터 {dpkt}B)")
         print(f"패킷 수   : START 1 + DATA {n_data} + END 1 = 총 {len(packets)}개")
-        print(f"전송 방식 : GATT Write Request (ACK, 패킷 유실 없음)\n")
+        print(f"전송 방식 : GATT Write Command (No ACK, 2ms 딜레이)\n")
         print(f"[전송] {len(packets)}개 패킷 전송 시작...")
 
         with tqdm(total=len(packets), unit="pkt", ncols=60,
                   bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]") as bar:
             for pkt in packets:
-                # response=True → GATT Write Request: 서버 ACK 후 다음 전송
-                # Write Without Response는 패킷 유실 시 재생 속도가 빨라지는 원인
-                await client.write_gatt_char(NUS_RX_UUID, pkt, response=True)
+                # response=False → GATT Write Command: ACK 없음, 빠르지만 flow control 없음
+                # 2ms 딜레이로 nRF RX 버퍼(BT_BUF_ACL_RX_COUNT=10) 오버플로우 방지
+                await client.write_gatt_char(NUS_RX_UUID, pkt, response=False)
+                await asyncio.sleep(0.002)
                 bar.update(1)
 
     print("\n✅ 전송 완료!")
