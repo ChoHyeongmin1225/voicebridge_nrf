@@ -2,6 +2,10 @@
 
 영어 음성을 실시간으로 한국어로 번역·합성하여 BLE로 전달받고, I2S DAC을 통해 스피커로 출력하는 nRF52840 DK 펌웨어입니다.
 
+## 데모 영상
+
+[![VoiceBridge Demo](https://img.youtube.com/vi/d-RMXx4DXOw/0.jpg)](https://youtu.be/d-RMXx4DXOw)
+
 ---
 
 ## 시스템 아키텍처
